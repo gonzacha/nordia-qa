@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nordia QA Agent v2.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            nordia: {
+              orange: '#F97316',
+              'orange-dark': '#EA580C',
+              dark: '#0F0F0F',
+              'dark-lighter': '#1A1A1A',
+              'dark-card': '#242424',
+              gray: '#404040',
+              'gray-light': '#A3A3A3'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #0F0F0F;
+      color: #E5E5E5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: #1A1A1A; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #525252; }
+
+    .result-content h2 { font-size: 1.25rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #F97316; }
+    .result-content h3 { font-size: 1.1rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+    .result-content ul, .result-content ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+    .result-content li { margin-bottom: 0.25rem; }
+    .result-content p { margin-bottom: 0.75rem; }
+    .result-content strong { color: #FCD34D; }
+    .result-content code { background: #1A1A1A; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; }
+    .result-content pre { background: #1A1A1A; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
+
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .pulse-orange { animation: pulseOrange 2s infinite; }
+    @keyframes pulseOrange {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Header -->
+  <header class="bg-nordia-dark-lighter border-b border-nordia-gray px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-nordia-orange rounded-lg flex items-center justify-center font-bold text-white text-xl">N</div>
+        <div>
+          <h1 class="text-lg font-bold text-white">Nordia QA Agent</h1>
+          <p class="text-xs text-nordia-gray-light">v2.0 - Auditoría automatizada para MVP</p>
+        </div>
+      </div>
+      <div id="statusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-nordia-dark-card border border-nordia-gray">
+        <span id="statusEmoji">⚪</span>
+        <span id="statusLabel" class="text-sm">Esperando...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto p-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+      <!-- Panel Izquierdo: Inputs -->
+      <div class="bg-nordia-dark-card rounded-xl border border-nordia-gray p-4 space-y-4">
+        <h2 class="text-lg font-semibold text-nordia-orange flex items-center gap-2">
+          <span>⚙️</span> Configuración del Análisis
+        </h2>
+
+        <!-- API Key -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-nordia-gray-light">API Key de Anthropic</label>
+          <div class="relative">
+            <input
+              type="password"
+              id="apiKey"
+              placeholder="sk-ant-..."
+              class="w-full bg-nordia-dark border border-nordia-gray rounded-lg px-3 py-2 text-sm focus:border-nordia-orange focus:outline-none focus:ring-1 focus:ring-nordia-orange"
+            >
+            <button
+              type="button"
+              onclick="toggleApiKeyVisibility()"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-nordia-gray-light hover:text-white"
+            >
+              <span id="eyeIcon">👁️</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="rememberKey" class="rounded bg-nordia-dark border-nordia-gray">
+            <label for="rememberKey" class="text-xs text-nordia-gray-light">Recordar API key en este equipo</label>
+          </div>
+        </div>
+
+        <!-- Modelo -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-nordia-gray-light">Modelo</label>
+          <select
+            id="model"
+            class="w-full bg-nordia-dark border border-nordia-gray rounded-lg px-3 py-2 text-sm focus:border-nordia-orange focus:outline-none"
+          >
+            <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Recomendado)</option>
+            <option value="claude-haiku-4-20250514">Claude Haiku 4 (Más rápido/económico)</option>
+          </select>
+        </div>
+
+        <!-- URL -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-nordia-gray-light">URL a analizar</label>
+          <input
+            type="text"
+            id="targetUrl"
+            value="https://nordia-pos-real.vercel.app"
+            placeholder="https://nordia-pos-real.vercel.app"
+            class="w-full bg-nordia-dark border border-nordia-gray rounded-lg px-3 py-2 text-sm focus:border-nordia-orange focus:outline-none"
+          >
+        </div>
+
+        <!-- Módulo -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-nordia-gray-light">Módulo a analizar</label>
+          <select
+            id="module"
+            class="w-full bg-nordia-dark border border-nordia-gray rounded-lg px-3 py-2 text-sm focus:border-nordia-orange focus:outline-none"
+          >
+            <option value="general">General (toda la app)</option>
+            <option value="onboarding">Onboarding</option>
+            <option value="auth">Autenticación (PIN)</option>
+            <option value="pos">Punto de Venta</option>
+            <option value="stock">Gestión de Stock</option>
+            <option value="dashboard">Dashboard</option>
+            <option value="settings">Configuración</option>
+          </select>
+        </div>
+
+        <!-- Tipo de Análisis -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-nordia-gray-light">Tipo de Análisis</label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <button onclick="selectAnalysisType('functional')" class="analysis-type-btn px-3 py-2 rounded-lg border border-nordia-gray bg-nordia-dark hover:bg-nordia-gray/30 text-sm transition-colors" data-type="functional">
+              🧪 Funcional
+            </button>
+            <button onclick="selectAnalysisType('ux')" class="analysis-type-btn px-3 py-2 rounded-lg border border-nordia-gray bg-nordia-dark hover:bg-nordia-gray/30 text-sm transition-colors" data-type="ux">
+              🎨 UX/UI
+            </button>
+            <button onclick="selectAnalysisType('security')" class="analysis-type-btn px-3 py-2 rounded-lg border border-nordia-gray bg-nordia-dark hover:bg-nordia-gray/30 text-sm transition-colors" data-type="security">
+              🔒 Seguridad
+            </button>
+            <button onclick="selectAnalysisType('performance')" class="analysis-type-btn px-3 py-2 rounded-lg border border-nordia-gray bg-nordia-dark hover:bg-nordia-gray/30 text-sm transition-colors" data-type="performance">
+              ⚡ Performance
+            </button>
+            <button onclick="selectAnalysisType('accessibility')" class="analysis-type-btn px-3 py-2 rounded-lg border border-nordia-gray bg-nordia-dark hover:bg-nordia-gray/30 text-sm transition-colors" data-type="accessibility">
+              ♿ Accesibilidad
+            </button>
+            <button onclick="selectAnalysisType('full')" class="analysis-type-btn px-3 py-2 rounded-lg border border-nordia-orange bg-nordia-orange/20 text-nordia-orange text-sm font-medium" data-type="full">
+              🔥 Completo MVP
+            </button>
+          </div>
+        </div>
+
+        <!-- Descripción opcional -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-nordia-gray-light">Contexto adicional (opcional)</label>
+          <textarea
+            id="description"
+            rows="2"
+            placeholder="Ej: Enfocate en el flujo de venta con efectivo..."
+            class="w-full bg-nordia-dark border border-nordia-gray rounded-lg px-3 py-2 text-sm focus:border-nordia-orange focus:outline-none resize-none"
+          ></textarea>
+        </div>
+
+        <!-- Código a analizar -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-sm font-medium text-nordia-gray-light">Código a analizar (opcional)</label>
+            <span id="codeCounter" class="text-xs text-nordia-gray-light">0 / 8000</span>
+          </div>
+          <textarea
+            id="codeSnippet"
+            rows="4"
+            placeholder="Pegá acá el código que querés que analice..."
+            class="w-full bg-nordia-dark border border-nordia-gray rounded-lg px-3 py-2 text-sm font-mono focus:border-nordia-orange focus:outline-none resize-none scrollbar-thin"
+            oninput="updateCodeCounter()"
+          ></textarea>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="flex gap-2 pt-2">
+          <button
+            onclick="runAnalysis()"
+            id="analyzeBtn"
+            class="flex-1 bg-nordia-orange hover:bg-nordia-orange-dark text-white font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <span>🚀</span> Analizar
+          </button>
+          <button
+            onclick="clearForm()"
+            class="px-4 py-2.5 border border-nordia-gray rounded-lg hover:bg-nordia-gray/30 transition-colors text-sm"
+          >
+            Limpiar
+          </button>
+        </div>
+
+        <!-- Limpiar datos guardados -->
+        <div class="pt-2 border-t border-nordia-gray">
+          <button
+            onclick="clearStoredData()"
+            class="text-xs text-nordia-gray-light hover:text-red-400 transition-colors"
+          >
+            🗑️ Limpiar datos guardados
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel Derecho: Resultados -->
+      <div class="bg-nordia-dark-card rounded-xl border border-nordia-gray p-4 flex flex-col min-h-[600px]">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-nordia-orange flex items-center gap-2">
+            <span>📊</span> Resultado del Análisis
+          </h2>
+          <div class="flex gap-2">
+            <button
+              onclick="exportToMarkdown()"
+              id="exportBtn"
+              class="px-3 py-1.5 text-sm border border-nordia-gray rounded-lg hover:bg-nordia-gray/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              📥 Exportar .md
+            </button>
+            <button
+              onclick="copyToClipboard()"
+              id="copyBtn"
+              class="px-3 py-1.5 text-sm border border-nordia-gray rounded-lg hover:bg-nordia-gray/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              📋 Copiar
+            </button>
+          </div>
+        </div>
+
+        <div id="resultContainer" class="flex-1 overflow-y-auto scrollbar-thin">
+          <div id="emptyState" class="h-full flex flex-col items-center justify-center text-nordia-gray-light">
+            <div class="text-6xl mb-4">🔍</div>
+            <p class="text-center">Configurá los parámetros y hacé clic en <strong class="text-nordia-orange">Analizar</strong> para comenzar</p>
+          </div>
+          <div id="loadingState" class="hidden h-full flex flex-col items-center justify-center">
+            <div class="w-16 h-16 border-4 border-nordia-gray border-t-nordia-orange rounded-full animate-spin mb-4"></div>
+            <p class="text-nordia-gray-light loading-dots">Analizando</p>
+            <p class="text-xs text-nordia-gray-light mt-2">Esto puede tomar unos segundos...</p>
+          </div>
+          <div id="resultContent" class="hidden result-content prose prose-invert max-w-none"></div>
+          <div id="errorState" class="hidden h-full flex flex-col items-center justify-center text-red-400">
+            <div class="text-6xl mb-4">❌</div>
+            <p id="errorMessage" class="text-center"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="mt-4 bg-nordia-dark-card rounded-xl border border-nordia-gray p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-nordia-orange flex items-center gap-2">
+          <span>📜</span> Historial de Análisis
+        </h2>
+        <button
+          onclick="clearHistory()"
+          class="text-xs text-nordia-gray-light hover:text-red-400 transition-colors"
+        >
+          Limpiar historial
+        </button>
+      </div>
+      <div id="historyContainer" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+        <p id="emptyHistory" class="text-sm text-nordia-gray-light text-center py-4">No hay análisis previos</p>
+      </div>
+    </div>
+
+    <!-- Checklist de Bugs -->
+    <div id="bugChecklistContainer" class="hidden mt-4 bg-nordia-dark-card rounded-xl border border-nordia-gray p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-nordia-orange flex items-center gap-2">
+          <span>✅</span> Checklist de Bugs
+        </h2>
+        <button
+          onclick="exportPendingBugs()"
+          class="px-3 py-1.5 text-sm border border-nordia-gray rounded-lg hover:bg-nordia-gray/30 transition-colors"
+        >
+          📥 Exportar pendientes
+        </button>
+      </div>
+      <div id="bugChecklist" class="space-y-2"></div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto p-4 text-center text-xs text-nordia-gray-light border-t border-nordia-gray mt-8">
+    <p>Nordia QA Agent v2.0 | Nordia Technologies © 2024 | Hecho con 🧡 para comercios de barrio</p>
+  </footer>
+
+  <script>
+    // ========================================
+    // CONFIGURACIÓN Y CONSTANTES
+    // ========================================
+    const CONFIG = {
+      STORAGE_KEYS: {
+        API_KEY: 'nordia_qa_api_key',
+        MODEL: 'nordia_qa_model',
+        URL: 'nordia_qa_url',
+        HISTORY: 'nordia_qa_history',
+        BUGS: 'nordia_qa_bugs'
+      },
+      MAX_HISTORY: 20,
+      MAX_CODE_LENGTH: 8000,
+      API_URL: 'https://api.anthropic.com/v1/messages'
+    };
+
+    const ANALYSIS_TYPES = {
+      functional: {
+        label: 'Funcional',
+        emoji: '🧪',
+        system: `Sos un QA Engineer experto en aplicaciones web para comercios de barrio en Argentina. Tu prioridad es encontrar problemas que impidan usar el sistema en el día a día de una carnicería o verdulería real. NO inventes bugs - si no podés verificar algo, decí 'No verificable'.`,
+        instructions: [
+          'Enfocate en los flujos críticos: crear cuenta, login, vender, ver stock',
+          'Diferenciá entre bugs que bloquean una venta vs detalles menores',
+          'Pensá como un carnicero de 55 años usando esto por primera vez',
+          'Verificá validaciones de formularios y manejo de errores'
+        ]
+      },
+      ux: {
+        label: 'UX/UI',
+        emoji: '🎨',
+        system: `Sos un UX Designer senior especializado en apps móviles simples para usuarios no técnicos (carniceros, kiosqueros, verduleros de 40-70 años). Tu foco es claridad y velocidad, no diseño 'fancy'. El usuario puede tener presbicia y la pantalla del celu sucia o rota.`,
+        instructions: [
+          'Evaluá tamaño de botones (mínimo 44x44px para dedos)',
+          'Verificá que los textos sean entendibles (nada de SKU, UUID, etc.)',
+          'Proponé ejemplos de textos en español argentino',
+          'Indicá si cada problema afecta la capacidad de vender rápido',
+          'Considerá uso con luz del sol pegando en la pantalla'
+        ]
+      },
+      security: {
+        label: 'Seguridad',
+        emoji: '🔒',
+        system: `Sos un Security Engineer pragmático evaluando un MVP para comercios de barrio. Tu foco es evitar desastres reales (filtración de datos de ventas, acceso no autorizado), no obsesionarte con detalles irrelevantes para esta etapa.`,
+        instructions: [
+          'Clasificá severidad pensando en un comercio de barrio, no en un banco',
+          'Verificá autenticación (PIN), manejo de sesiones, datos en localStorage',
+          "Si algo requiere infraestructura que un MVP no tiene, marcalo como 'mejora futura'",
+          '¿Un vecino curioso podría acceder a datos de otro comercio?'
+        ]
+      },
+      performance: {
+        label: 'Performance',
+        emoji: '⚡',
+        system: `Sos un Performance Engineer evaluando una PWA que debe andar en celulares Android viejos (Moto G4, Samsung A10) con 2-4GB de RAM y conexión de 3-10 Mbps. NO inventes métricas - si no las tenés, indicá que son hipótesis.`,
+        instructions: [
+          'Diferenciá entre métricas reales (Lighthouse) e hipótesis',
+          'Priorizá optimizaciones de alto impacto y baja complejidad',
+          '¿La app se puede usar mientras se descarga mercadería?',
+          'Evaluá peso del bundle, lazy loading, imágenes',
+          'Objetivo realista para MVP: carga inicial <5s en 3G'
+        ]
+      },
+      accessibility: {
+        label: 'Accesibilidad',
+        emoji: '♿',
+        system: `Sos especialista en accesibilidad práctica para gente de 40-70 años con presbicia, usando el celu en un comercio con luz variable. No seas dogmático con WCAG - priorizá cambios que den máxima mejora con mínimo esfuerzo.`,
+        instructions: [
+          'Priorizá: contraste, tamaño de texto (min 16px), tamaño de botones (min 44px)',
+          'Considerá uso con anteojos bifocales o sin anteojos',
+          'Evaluá legibilidad con luz del sol o ambiente oscuro',
+          'Indicá si el problema realmente dificulta operar el negocio'
+        ]
+      },
+      full: {
+        label: 'Completo MVP',
+        emoji: '🔥',
+        system: `Sos un Tech Lead senior auditando Nordia POS antes de probarlo con 5 comercios reales en Argentina. Tu objetivo NO es frenar el MVP ni ser perfeccionista, sino marcar qué hay que corregir ANTES de ir a campo y qué se puede dejar para después. NO inventes bugs ni métricas.`,
+        instructions: [
+          "Incluí DOS scores separados: 'Listo para MVP con 5 comercios' (0-100) y 'Listo para producción masiva' (0-100)",
+          'Listá Top 5 issues que BLOQUEAN pruebas reales',
+          'Listá Top 5 mejoras para DESPUÉS de validar',
+          "El veredicto final debe responder: '¿Podemos ir a probar con 5 carnicerías esta semana?'",
+          'Sé específico y accionable, no genérico'
+        ]
+      }
+    };
+
+    const MVP_CONTEXT = `El objetivo inmediato es validar el MVP con 5 comercios de barrio (carnicerías, verdulerías). Un bug 'BLOQUEANTE' es algo que impida: crear cuenta, entrar al sistema, registrar una venta, ver stock. Todo lo demás es 'mejora futura' a menos que cause frustración extrema.
+
+CONTEXTO DEL PRODUCTO:
+- Nordia POS: Sistema de punto de venta para comercios de barrio argentinos
+- Stack: Next.js 16 + Supabase + Zustand + PWA + Tailwind CSS
+- Usuario típico: Carnicero/verdulero de 35-65 años, nivel digital bajo, celular Android gama baja (2-4GB RAM), internet de 3-10 Mbps
+
+CRITERIOS MVP:
+- CRÍTICO: Crear cuenta, login con PIN, registrar venta (efectivo), ver stock, agregar productos, ver dashboard
+- IMPORTANTE: No crashear en gama baja, mensajes claros sin jerga técnica, botones grandes
+
+NO OBLIGATORIO AÚN:
+- Offline perfecto, tests completos, AFIP, MercadoPago, performance <2s`;
+
+    const OUTPUT_FORMAT = `
+FORMATO DE SALIDA REQUERIDO:
+## 📋 Resumen Ejecutivo
+(2-3 oraciones sobre el estado general)
+
+## 🎯 Contexto del Análisis
+(Qué se analizó y bajo qué criterios)
+
+## 🔴 Bugs Críticos (Bloquean MVP)
+(Si no hay, indicar "No se encontraron bugs críticos")
+
+## 🟠 Bugs Altos (Deberían arreglarse)
+
+## 🟡 Bugs Medios (Mejoras importantes)
+
+## 🟢 Bugs Bajos (Nice to have)
+
+## ✅ Qué Funciona Bien
+(Listar al menos 3 cosas positivas)
+
+## 📊 Score
+- Listo para MVP (5 comercios): X/100
+- Listo para producción masiva: X/100
+
+## 🚀 Recomendaciones Priorizadas
+(Top 5 acciones ordenadas por impacto)
+
+## ❓ No Verificable
+(Cosas que requieren prueba manual o acceso que no tenés)
+
+## 🎯 Veredicto MVP
+(Responder: ¿Se puede probar con 5 comercios esta semana? Sí/No y por qué)
+
+FORMATO PARA CADA BUG:
+### [EMOJI SEVERIDAD] Título descriptivo
+- **Descripción:** Qué pasa exactamente
+- **Impacto:** Cómo afecta al usuario (carnicero, verdulero)
+- **Pasos:** Cómo reproducir (si aplica)
+- **Sugerencia:** Cómo arreglarlo`;
+
+    // ========================================
+    // ESTADO DE LA APLICACIÓN
+    // ========================================
+    let state = {
+      selectedType: 'full',
+      isAnalyzing: false,
+      currentResult: null,
+      bugs: []
+    };
+
+    // ========================================
+    // FUNCIONES DE UTILIDAD
+    // ========================================
+    function sanitizeInput(input) {
+      if (!input) return '';
+      return input
+        .trim()
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/`/g, '\\`');
+    }
+
+    function sanitizeUrl(url) {
+      if (!url) return '';
+      let sanitized = url.trim();
+      if (!sanitized.startsWith('http://') && !sanitized.startsWith('https://')) {
+        sanitized = 'https://' + sanitized;
+      }
+      return sanitized;
+    }
+
+    function updateCodeCounter() {
+      const code = document.getElementById('codeSnippet').value;
+      const counter = document.getElementById('codeCounter');
+      const length = code.length;
+      counter.textContent = `${length} / ${CONFIG.MAX_CODE_LENGTH}`;
+      counter.className = length > CONFIG.MAX_CODE_LENGTH
+        ? 'text-xs text-red-400'
+        : 'text-xs text-nordia-gray-light';
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('apiKey');
+      const icon = document.getElementById('eyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        icon.textContent = '👁️';
+      }
+    }
+
+    // ========================================
+    // PERSISTENCIA (localStorage)
+    // ========================================
+    function saveToStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+      }
+    }
+
+    function loadFromStorage(key, defaultValue = null) {
+      try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : defaultValue;
+      } catch (e) {
+        console.error('Error loading from localStorage:', e);
+        return defaultValue;
+      }
+    }
+
+    function loadSavedSettings() {
+      // API Key
+      const savedKey = loadFromStorage(CONFIG.STORAGE_KEYS.API_KEY);
+      if (savedKey) {
+        document.getElementById('apiKey').value = savedKey;
+        document.getElementById('rememberKey').checked = true;
+      }
+
+      // Modelo
+      const savedModel = loadFromStorage(CONFIG.STORAGE_KEYS.MODEL, 'claude-sonnet-4-20250514');
+      document.getElementById('model').value = savedModel;
+
+      // URL
+      const savedUrl = loadFromStorage(CONFIG.STORAGE_KEYS.URL, 'https://nordia-pos-real.vercel.app');
+      document.getElementById('targetUrl').value = savedUrl;
+
+      // Historial
+      renderHistory();
+
+      // Bugs
+      state.bugs = loadFromStorage(CONFIG.STORAGE_KEYS.BUGS, []);
+    }
+
+    function saveSettings() {
+      const rememberKey = document.getElementById('rememberKey').checked;
+      if (rememberKey) {
+        saveToStorage(CONFIG.STORAGE_KEYS.API_KEY, document.getElementById('apiKey').value);
+      } else {
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.API_KEY);
+      }
+      saveToStorage(CONFIG.STORAGE_KEYS.MODEL, document.getElementById('model').value);
+      saveToStorage(CONFIG.STORAGE_KEYS.URL, document.getElementById('targetUrl').value);
+    }
+
+    function clearStoredData() {
+      if (confirm('¿Seguro que querés borrar todos los datos guardados?')) {
+        Object.values(CONFIG.STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+        document.getElementById('apiKey').value = '';
+        document.getElementById('rememberKey').checked = false;
+        document.getElementById('model').value = 'claude-sonnet-4-20250514';
+        document.getElementById('targetUrl').value = 'https://nordia-pos-real.vercel.app';
+        state.bugs = [];
+        renderHistory();
+        renderBugChecklist();
+        updateStatus('idle');
+      }
+    }
+
+    // ========================================
+    // HISTORIAL
+    // ========================================
+    function addToHistory(entry) {
+      let history = loadFromStorage(CONFIG.STORAGE_KEYS.HISTORY, []);
+      history.unshift({
+        ...entry,
+        timestamp: new Date().toISOString()
+      });
+      if (history.length > CONFIG.MAX_HISTORY) {
+        history = history.slice(0, CONFIG.MAX_HISTORY);
+      }
+      saveToStorage(CONFIG.STORAGE_KEYS.HISTORY, history);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyContainer');
+      const history = loadFromStorage(CONFIG.STORAGE_KEYS.HISTORY, []);
+
+      if (history.length === 0) {
+        container.innerHTML = '<p id="emptyHistory" class="text-sm text-nordia-gray-light text-center py-4">No hay análisis previos</p>';
+        return;
+      }
+
+      container.innerHTML = history.map((entry, index) => `
+        <div class="flex items-center justify-between p-3 bg-nordia-dark rounded-lg border border-nordia-gray hover:border-nordia-gray-light transition-colors cursor-pointer" onclick="loadHistoryEntry(${index})">
+          <div class="flex items-center gap-3">
+            <span class="text-xl">${ANALYSIS_TYPES[entry.type]?.emoji || '🔍'}</span>
+            <div>
+              <p class="text-sm font-medium">${entry.module || 'General'} - ${ANALYSIS_TYPES[entry.type]?.label || entry.type}</p>
+              <p class="text-xs text-nordia-gray-light">${new Date(entry.timestamp).toLocaleString('es-AR')}</p>
+            </div>
+          </div>
+          <span class="text-sm ${entry.hasCritical ? 'text-red-400' : 'text-green-400'}">${entry.hasCritical ? '🔴' : '🟢'}</span>
+        </div>
+      `).join('');
+    }
+
+    function loadHistoryEntry(index) {
+      const history = loadFromStorage(CONFIG.STORAGE_KEYS.HISTORY, []);
+      const entry = history[index];
+      if (entry && entry.result) {
+        showResult(entry.result);
+        parseBugsFromResult(entry.result);
+      }
+    }
+
+    function clearHistory() {
+      if (confirm('¿Seguro que querés borrar el historial?')) {
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.HISTORY);
+        renderHistory();
+      }
+    }
+
+    // ========================================
+    // ESTADO VISUAL
+    // ========================================
+    function updateStatus(statusId, label = null) {
+      const statusEmoji = document.getElementById('statusEmoji');
+      const statusLabel = document.getElementById('statusLabel');
+      const badge = document.getElementById('statusBadge');
+
+      const statuses = {
+        idle: { emoji: '⚪', label: 'Esperando...', color: 'border-nordia-gray' },
+        running: { emoji: '🟠', label: 'Analizando...', color: 'border-nordia-orange pulse-orange' },
+        success_clean: { emoji: '🟢', label: 'Sin errores críticos', color: 'border-green-500' },
+        success_warnings: { emoji: '🟡', label: 'Con advertencias', color: 'border-yellow-500' },
+        success_errors: { emoji: '🔴', label: 'Errores críticos encontrados', color: 'border-red-500' },
+        api_error: { emoji: '❌', label: 'Error de API', color: 'border-red-500' }
+      };
+
+      const status = statuses[statusId] || statuses.idle;
+      statusEmoji.textContent = status.emoji;
+      statusLabel.textContent = label || status.label;
+      badge.className = `flex items-center gap-2 px-3 py-1.5 rounded-full bg-nordia-dark-card border ${status.color}`;
+    }
+
+    function detectSeverityFromResult(result) {
+      if (!result) return 'idle';
+      const hasCritical = result.includes('🔴') || result.toLowerCase().includes('crítico') || result.toLowerCase().includes('bloqueante');
+      const hasWarnings = result.includes('🟠') || result.includes('🟡');
+
+      if (hasCritical) return 'success_errors';
+      if (hasWarnings) return 'success_warnings';
+      return 'success_clean';
+    }
+
+    // ========================================
+    // SELECCIÓN DE TIPO DE ANÁLISIS
+    // ========================================
+    function selectAnalysisType(type) {
+      state.selectedType = type;
+      document.querySelectorAll('.analysis-type-btn').forEach(btn => {
+        if (btn.dataset.type === type) {
+          btn.className = 'analysis-type-btn px-3 py-2 rounded-lg border border-nordia-orange bg-nordia-orange/20 text-nordia-orange text-sm font-medium';
+        } else {
+          btn.className = 'analysis-type-btn px-3 py-2 rounded-lg border border-nordia-gray bg-nordia-dark hover:bg-nordia-gray/30 text-sm transition-colors';
+        }
+      });
+    }
+
+    // ========================================
+    // CONSTRUCCIÓN DEL PROMPT
+    // ========================================
+    function buildPrompt() {
+      const url = sanitizeUrl(document.getElementById('targetUrl').value);
+      const module = document.getElementById('module').value;
+      const description = sanitizeInput(document.getElementById('description').value);
+      let code = document.getElementById('codeSnippet').value;
+
+      if (code.length > CONFIG.MAX_CODE_LENGTH) {
+        code = code.substring(0, CONFIG.MAX_CODE_LENGTH) + '\n... (código truncado por límite de caracteres)';
+      }
+      code = sanitizeInput(code);
+
+      const analysisType = ANALYSIS_TYPES[state.selectedType];
+
+      let userMessage = `ANÁLISIS SOLICITADO:
+- URL: ${url}
+- Módulo: ${module}
+- Tipo de análisis: ${analysisType.emoji} ${analysisType.label}
+
+CONTEXTO MVP:
+${MVP_CONTEXT}
+
+INSTRUCCIONES ESPECÍFICAS:
+${analysisType.instructions.map(i => `- ${i}`).join('\n')}`;
+
+      if (description) {
+        userMessage += `\n\nCONTEXTO ADICIONAL DEL USUARIO:\n${description}`;
+      }
+
+      if (code) {
+        userMessage += `\n\nCÓDIGO A ANALIZAR:\n\`\`\`\n${code}\n\`\`\``;
+      }
+
+      userMessage += `\n\n${OUTPUT_FORMAT}`;
+
+      return {
+        system: analysisType.system,
+        user: userMessage
+      };
+    }
+
+    // ========================================
+    // LLAMADA A LA API
+    // ========================================
+    async function runAnalysis() {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      if (!apiKey) {
+        alert('Por favor ingresá tu API Key de Anthropic');
+        return;
+      }
+
+      if (!apiKey.startsWith('sk-ant-')) {
+        alert('La API Key debe empezar con sk-ant-');
+        return;
+      }
+
+      // Guardar configuración
+      saveSettings();
+
+      // Actualizar UI
+      state.isAnalyzing = true;
+      updateStatus('running');
+      showLoading();
+
+      const prompt = buildPrompt();
+      const model = document.getElementById('model').value;
+
+      try {
+        const response = await fetch(CONFIG.API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: model,
+            max_tokens: 4096,
+            system: prompt.system,
+            messages: [
+              { role: 'user', content: prompt.user }
+            ]
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error?.message || `Error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const result = data.content[0].text;
+
+        state.currentResult = result;
+        state.isAnalyzing = false;
+
+        // Detectar severidad y actualizar estado
+        const severity = detectSeverityFromResult(result);
+        updateStatus(severity);
+
+        // Mostrar resultado
+        showResult(result);
+
+        // Parsear bugs
+        parseBugsFromResult(result);
+
+        // Agregar al historial
+        addToHistory({
+          type: state.selectedType,
+          module: document.getElementById('module').value,
+          url: document.getElementById('targetUrl').value,
+          result: result,
+          hasCritical: severity === 'success_errors'
+        });
+
+      } catch (error) {
+        console.error('Error:', error);
+        state.isAnalyzing = false;
+        updateStatus('api_error', error.message);
+        showError(error.message);
+      }
+    }
+
+    // ========================================
+    // RENDERIZADO DE RESULTADOS
+    // ========================================
+    function showLoading() {
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('loadingState').classList.remove('hidden');
+      document.getElementById('resultContent').classList.add('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('exportBtn').disabled = true;
+      document.getElementById('copyBtn').disabled = true;
+      document.getElementById('analyzeBtn').disabled = true;
+      document.getElementById('analyzeBtn').innerHTML = '<span class="animate-spin">⏳</span> Analizando...';
+    }
+
+    function showResult(result) {
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('resultContent').classList.remove('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('exportBtn').disabled = false;
+      document.getElementById('copyBtn').disabled = false;
+      document.getElementById('analyzeBtn').disabled = false;
+      document.getElementById('analyzeBtn').innerHTML = '<span>🚀</span> Analizar';
+
+      // Convertir markdown a HTML básico
+      const html = markdownToHtml(result);
+      document.getElementById('resultContent').innerHTML = html;
+      document.getElementById('resultContent').classList.add('fade-in');
+    }
+
+    function showError(message) {
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('resultContent').classList.add('hidden');
+      document.getElementById('errorState').classList.remove('hidden');
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('analyzeBtn').disabled = false;
+      document.getElementById('analyzeBtn').innerHTML = '<span>🚀</span> Analizar';
+    }
+
+    function markdownToHtml(md) {
+      return md
+        // Headers
+        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Code blocks
+        .replace(/```[\s\S]*?```/g, match => {
+          const code = match.replace(/```\w*\n?/g, '').replace(/```/g, '');
+          return `<pre><code>${code}</code></pre>`;
+        })
+        // Inline code
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // Lists
+        .replace(/^\s*[-*]\s(.*)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+        // Line breaks
+        .replace(/\n/g, '<br>');
+    }
+
+    // ========================================
+    // CHECKLIST DE BUGS
+    // ========================================
+    function parseBugsFromResult(result) {
+      const bugRegex = /### (🔴|🟠|🟡|🟢) (.+?)(?=\n###|\n## |$)/gs;
+      const matches = [...result.matchAll(bugRegex)];
+
+      state.bugs = matches.map((match, index) => ({
+        id: `bug_${Date.now()}_${index}`,
+        severity: match[1],
+        title: match[2].trim(),
+        content: match[0],
+        resolved: false
+      }));
+
+      saveToStorage(CONFIG.STORAGE_KEYS.BUGS, state.bugs);
+      renderBugChecklist();
+    }
+
+    function renderBugChecklist() {
+      const container = document.getElementById('bugChecklistContainer');
+      const list = document.getElementById('bugChecklist');
+
+      if (state.bugs.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      list.innerHTML = state.bugs.map(bug => `
+        <div class="flex items-start gap-3 p-3 bg-nordia-dark rounded-lg border border-nordia-gray ${bug.resolved ? 'opacity-50' : ''}">
+          <input
+            type="checkbox"
+            ${bug.resolved ? 'checked' : ''}
+            onchange="toggleBugResolved('${bug.id}')"
+            class="mt-1 rounded bg-nordia-dark border-nordia-gray"
+          >
+          <div class="flex-1">
+            <p class="text-sm ${bug.resolved ? 'line-through' : ''}">
+              <span class="mr-1">${bug.severity}</span>
+              ${bug.title}
+            </p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleBugResolved(bugId) {
+      const bug = state.bugs.find(b => b.id === bugId);
+      if (bug) {
+        bug.resolved = !bug.resolved;
+        saveToStorage(CONFIG.STORAGE_KEYS.BUGS, state.bugs);
+        renderBugChecklist();
+      }
+    }
+
+    function exportPendingBugs() {
+      const pending = state.bugs.filter(b => !b.resolved);
+      if (pending.length === 0) {
+        alert('No hay bugs pendientes');
+        return;
+      }
+
+      const content = `# Bugs Pendientes - Nordia QA\n\nExportado: ${new Date().toLocaleString('es-AR')}\n\n` +
+        pending.map(b => `${b.severity} ${b.title}`).join('\n');
+
+      downloadFile('bugs-pendientes.md', content);
+    }
+
+    // ========================================
+    // EXPORTACIÓN
+    // ========================================
+    function exportToMarkdown() {
+      if (!state.currentResult) return;
+
+      const filename = `nordia-qa-${state.selectedType}-${new Date().toISOString().split('T')[0]}.md`;
+      const content = `# Nordia QA Report\n\n**Fecha:** ${new Date().toLocaleString('es-AR')}\n**URL:** ${document.getElementById('targetUrl').value}\n**Módulo:** ${document.getElementById('module').value}\n**Tipo:** ${ANALYSIS_TYPES[state.selectedType]?.label || state.selectedType}\n\n---\n\n${state.currentResult}`;
+
+      downloadFile(filename, content);
+    }
+
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyToClipboard() {
+      if (!state.currentResult) return;
+
+      try {
+        await navigator.clipboard.writeText(state.currentResult);
+        const btn = document.getElementById('copyBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copiado!';
+        setTimeout(() => btn.innerHTML = originalText, 2000);
+      } catch (e) {
+        alert('No se pudo copiar. Intentá seleccionar el texto manualmente.');
+      }
+    }
+
+    // ========================================
+    // LIMPIAR FORMULARIO
+    // ========================================
+    function clearForm() {
+      document.getElementById('description').value = '';
+      document.getElementById('codeSnippet').value = '';
+      updateCodeCounter();
+      document.getElementById('emptyState').classList.remove('hidden');
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('resultContent').classList.add('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('exportBtn').disabled = true;
+      document.getElementById('copyBtn').disabled = true;
+      state.currentResult = null;
+      updateStatus('idle');
+    }
+
+    // ========================================
+    // INICIALIZACIÓN
+    // ========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSavedSettings();
+      selectAnalysisType('full');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nordia-testcase-template",
+  "title": "Nordia Test Case Template",
+  "description": "Plantilla oficial para casos de prueba en Nordia POS",
+  "version": "1.0.0",
+  
+  "template": {
+    "id": "TC-XXXX",
+    "title": "[Nombre descriptivo del test]",
+    "version": "1.0",
+    "author": "[Autor del test]",
+    "last_updated": "YYYY-MM-DD",
+    
+    "metadata": {
+      "objetivo": "[Qué se quiere verificar]",
+      "severity_si_falla": "[Critica|Alta|Media|Baja]",
+      "priority": "[Urgente|Alta|Media|Baja]",
+      "tiempo_estimado": "[X minutos]",
+      "automatizable": true
+    },
+    
+    "tags": [
+      "[smoke|regression|exploratory|edge-case]",
+      "[venta|stock|caja|auth|reportes]",
+      "[carniceria|verduleria|kiosco|todos]"
+    ],
+    
+    "preconditions": [
+      "Condición 1 que debe cumplirse antes",
+      "Condición 2 que debe cumplirse antes"
+    ],
+    
+    "steps": [
+      {
+        "numero": 1,
+        "accion": "[Qué hacer]",
+        "detalle": "[Cómo hacerlo específicamente]",
+        "expected": "[Qué debería pasar]"
+      }
+    ],
+    
+    "expected_results": [
+      "Resultado esperado 1",
+      "Resultado esperado 2"
+    ],
+    
+    "data_sets": {
+      "descripcion": "Datos de prueba para ejecutar el test",
+      "datos": []
+    },
+    
+    "ambiente_requerido": {
+      "app_version": "[>=vX.X.X]",
+      "dispositivos": ["desktop", "tablet", "mobile"],
+      "browsers": ["Chrome 90+"],
+      "conexion": "[online|offline|both]"
+    }
+  },
+  
+  "ejemplo": {
+    "id": "TC-0001",
+    "title": "Venta simple con efectivo",
+    "version": "1.0",
+    "author": "Claude (QA Agent)",
+    "last_updated": "2025-12-07",
+    
+    "metadata": {
+      "objetivo": "Verificar que el POS permita registrar una venta simple con pago en efectivo",
+      "severity_si_falla": "Critica",
+      "priority": "Urgente",
+      "tiempo_estimado": "3 minutos",
+      "automatizable": true
+    },
+    
+    "tags": [
+      "smoke",
+      "venta",
+      "efectivo",
+      "critico",
+      "todos"
+    ],
+    
+    "preconditions": [
+      "Usuario autenticado con rol cajero",
+      "Inventario con al menos un producto disponible",
+      "Caja abierta para el turno actual"
+    ],
+    
+    "steps": [
+      {
+        "numero": 1,
+        "accion": "Navegar a la pantalla de ventas",
+        "detalle": "Click en menú 'Vender' o ir a /app/sell",
+        "expected": "Se muestra la pantalla de POS con buscador de productos"
+      },
+      {
+        "numero": 2,
+        "accion": "Buscar producto",
+        "detalle": "Escribir nombre del producto o escanear código",
+        "expected": "Producto aparece en resultados de búsqueda"
+      },
+      {
+        "numero": 3,
+        "accion": "Agregar al carrito",
+        "detalle": "Click en producto y seleccionar cantidad",
+        "expected": "Producto aparece en carrito con precio correcto"
+      },
+      {
+        "numero": 4,
+        "accion": "Finalizar venta",
+        "detalle": "Click en 'Confirmar Venta' o 'Cobrar'",
+        "expected": "Se muestra selector de método de pago"
+      },
+      {
+        "numero": 5,
+        "accion": "Seleccionar pago efectivo",
+        "detalle": "Click en 'Efectivo' e ingresar monto recibido",
+        "expected": "Se calcula vuelto correctamente"
+      },
+      {
+        "numero": 6,
+        "accion": "Confirmar pago",
+        "detalle": "Click en 'Confirmar' o 'Listo'",
+        "expected": "Se genera ticket con número de operación"
+      }
+    ],
+    
+    "expected_results": [
+      "Producto aparece en carrito con precio y cantidad correctos",
+      "Total se calcula correctamente (precio × cantidad)",
+      "Se genera ticket con número único de operación",
+      "Stock se actualiza (cantidad disponible disminuye)",
+      "Venta aparece en historial del día",
+      "Dashboard actualiza métricas"
+    ],
+    
+    "data_sets": {
+      "descripcion": "Productos y cantidades para probar",
+      "productos": [
+        {"nombre": "Costilla", "precio": 900, "unidad": "kg"},
+        {"nombre": "Chorizo", "precio": 800, "unidad": "kg"},
+        {"nombre": "Coca-Cola 500ml", "precio": 350, "unidad": "unidad"}
+      ],
+      "cantidades": [1, 2.5, 0.5, 10],
+      "montos_efectivo": [1000, 5000, 10000]
+    },
+    
+    "ambiente_requerido": {
+      "app_version": ">=1.0.0",
+      "dispositivos": ["desktop", "tablet", "mobile"],
+      "browsers": ["Chrome 90+", "Firefox 88+", "Safari 14+"],
+      "conexion": "both"
+    }
+  },
+  
+  "smoke_tests": {
+    "descripcion": "Los 10 Smoke Tests obligatorios de Nordia QA",
+    "tests": [
+      {"id": "ST-01", "title": "Login con PIN", "severity": "Critica"},
+      {"id": "ST-02", "title": "Venta simple con efectivo", "severity": "Critica"},
+      {"id": "ST-03", "title": "Venta con balanza", "severity": "Critica"},
+      {"id": "ST-04", "title": "Venta con tarjeta", "severity": "Alta"},
+      {"id": "ST-05", "title": "Anulación de venta", "severity": "Alta"},
+      {"id": "ST-06", "title": "Corte de caja", "severity": "Critica"},
+      {"id": "ST-07", "title": "Gestión de stock", "severity": "Alta"},
+      {"id": "ST-08", "title": "Cambio de precios", "severity": "Alta"},
+      {"id": "ST-09", "title": "Reporte diario", "severity": "Media"},
+      {"id": "ST-10", "title": "Recuperación offline", "severity": "Critica"}
+    ]
+  }
+}

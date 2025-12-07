@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nordia-bug-template",
+  "title": "Nordia Bug Report Template",
+  "description": "Plantilla oficial para reportar bugs en Nordia POS",
+  "version": "1.0.0",
+  
+  "template": {
+    "id": "BUG-XXXX",
+    "title": "[Resumen breve del bug - máximo 80 caracteres]",
+    "fecha": "YYYY-MM-DD",
+    "reporter": "[Nombre de quien reporta]",
+    
+    "comercio": {
+      "nombre": "[Nombre del comercio]",
+      "vertical": "[carniceria|verduleria|kiosco|almacen|panaderia|otro]",
+      "dispositivo": "[Modelo del dispositivo]"
+    },
+    
+    "clasificacion": {
+      "severity": "[Critica|Alta|Media|Baja]",
+      "priority": "[Urgente|Alta|Media|Baja]",
+      "tipo": "[Funcional|UX|Performance|Security|Accessibility]",
+      "componente": "[POS/Checkout|POS/Stock|POS/Dashboard|Auth|Reportes|Config]"
+    },
+    
+    "descripcion": {
+      "resumen": "[Descripción clara del problema]",
+      "steps_to_reproduce": [
+        "Paso 1: [Acción específica]",
+        "Paso 2: [Acción específica]",
+        "Paso 3: [Acción específica]"
+      ],
+      "expected_result": "[Qué debería pasar]",
+      "actual_result": "[Qué pasa realmente]",
+      "impact": "[Impacto en el negocio/comercio]"
+    },
+    
+    "evidencia": {
+      "screenshot": "[URL o ruta del screenshot]",
+      "video": "[URL o ruta del video - opcional]",
+      "logs": "[Errores de consola relevantes]",
+      "network": "[Errores de red si aplica]"
+    },
+    
+    "ambiente": {
+      "app_version": "[vX.X.X]",
+      "device": "[Modelo]",
+      "os": "[Sistema operativo y versión]",
+      "browser": "[Navegador y versión]",
+      "conexion": "[WiFi/4G/3G y velocidad aproximada]"
+    },
+    
+    "tecnico": {
+      "archivo_probable": "[Ruta al archivo sospechoso]",
+      "linea_probable": null,
+      "notas_dev": "[Pistas para el desarrollador]",
+      "commit_relacionado": null
+    },
+    
+    "estado": {
+      "status": "[Open|In Progress|Resolved|Closed|Wont Fix]",
+      "asignado_a": null,
+      "fecha_resolucion": null,
+      "version_fix": null
+    }
+  },
+  
+  "ejemplo": {
+    "id": "BUG-0001",
+    "title": "Error en cálculo de totales con descuento manual",
+    "fecha": "2025-12-07",
+    "reporter": "Gonzalo Haedo",
+    
+    "comercio": {
+      "nombre": "Carnicería El Tío",
+      "vertical": "carniceria",
+      "dispositivo": "Tablet Samsung A7"
+    },
+    
+    "clasificacion": {
+      "severity": "Alta",
+      "priority": "Urgente",
+      "tipo": "Funcional",
+      "componente": "POS/Checkout"
+    },
+    
+    "descripcion": {
+      "resumen": "El descuento se aplica dos veces al total de la venta",
+      "steps_to_reproduce": [
+        "Ingresar al POS con usuario cajero",
+        "Agregar producto 'Costilla' con peso 2,5 kg",
+        "Aplicar descuento manual de 10%",
+        "Finalizar venta"
+      ],
+      "expected_result": "Total = (precio × peso) - 10% = $2.025",
+      "actual_result": "Total = (precio × peso) - 20% = $1.800",
+      "impact": "Pérdida de $225 por venta. Afecta margen de ganancia."
+    },
+    
+    "evidencia": {
+      "screenshot": "https://storage.nordia.uno/bugs/BUG-0001-screenshot.png",
+      "video": null,
+      "logs": "console.warn: 'discount applied twice'",
+      "network": null
+    },
+    
+    "ambiente": {
+      "app_version": "v1.3.0",
+      "device": "Tablet Samsung A7",
+      "os": "Android 11",
+      "browser": "Chrome 120",
+      "conexion": "WiFi 10 Mbps"
+    },
+    
+    "tecnico": {
+      "archivo_probable": "src/lib/calculations.ts",
+      "linea_probable": 54,
+      "notas_dev": "Revisar función calculateTotal(), parece que llama a applyDiscount() dos veces",
+      "commit_relacionado": null
+    },
+    
+    "estado": {
+      "status": "Open",
+      "asignado_a": null,
+      "fecha_resolucion": null,
+      "version_fix": null
+    }
+  },
+  
+  "validacion": {
+    "campos_obligatorios": [
+      "id",
+      "title",
+      "fecha",
+      "clasificacion.severity",
+      "clasificacion.priority",
+      "descripcion.steps_to_reproduce",
+      "descripcion.expected_result",
+      "descripcion.actual_result",
+      "descripcion.impact",
+      "evidencia.screenshot"
+    ],
+    "nota": "Sin estos campos, el bug NO es válido según las 3 Reglas Sagradas"
+  }
+}

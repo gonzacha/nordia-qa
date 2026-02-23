@@ -30,8 +30,12 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p out
-          ./scripts/qsd_module.sh | tee out/qsd_module.json | jq .
-          echo "ok=true" >> $GITHUB_OUTPUT
+          set +e
+          ./scripts/qsd_module.sh > out/qsd_module.json
+          exit_code=$?
+          set -e
+          cat out/qsd_module.json | jq .
+          echo "exit_code=${exit_code}" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
         if: always()
@@ -42,8 +46,36 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Notify Discord on FAIL
-        if: failure()
+      - name: Checkout qa-ledger branch
+        uses: actions/checkout@v4
+        with:
+          ref: qa-ledger
+          path: qa-workspace
+
+      - name: Enrich + append to ledger
+        run: |
+          mkdir -p qa-workspace/data
+          touch qa-workspace/data/qa_history.jsonl
+          ENRICHED_JSON="$(bash scripts/qsd_observability.sh "$(cat out/qsd_module.json)" "qa-workspace/data/qa_history.jsonl")"
+          echo "$ENRICHED_JSON" >> qa-workspace/data/qa_history.jsonl
+          tail -n 168 qa-workspace/data/qa_history.jsonl > qa-workspace/data/.tmp
+          mv qa-workspace/data/.tmp qa-workspace/data/qa_history.jsonl
+          echo "$ENRICHED_JSON" > out/qsd_observability.json
+
+      - name: Commit ledger
+        run: |
+          git -C qa-workspace config user.name "QSD Bot"
+          git -C qa-workspace config user.email "qsd-bot@noreply"
+          git -C qa-workspace add data/qa_history.jsonl
+          if git -C qa-workspace diff --cached --quiet; then
+            echo "no changes"
+          else
+            git -C qa-workspace commit -m "chore: append QA observability run [skip ci]"
+          fi
+          git -C qa-workspace pull --rebase origin qa-ledger || true
+          git -C qa-workspace push origin qa-ledger || git -C qa-workspace push origin qa-ledger
+
+      - name: Notify Discord on state transition
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -52,10 +84,26 @@ jobs:
             exit 0
           fi
 
-          payload="$(cat out/qsd_module.json | jq -c '.')"
+          payload="$(cat out/qsd_observability.json | jq -c '.')"
+          alert="$(echo "$payload" | jq -r '.observability.alert // "NONE"')"
+
+          if [ "$alert" = "NONE" ]; then
+            echo "no alert"
+            exit 0
+          fi
+
+          if [ "$alert" = "ENTER_RED" ]; then
+            content="🚨 QSD Blackbox RED — ${BASE_URL} cat=${CAT} (see artifact in Actions run)"
+          elif [ "$alert" = "ENTER_ORANGE" ]; then
+            content="🟠 QSD Blackbox ORANGE — ${BASE_URL} cat=${CAT} (see artifact in Actions run)"
+          elif [ "$alert" = "RECOVERY" ]; then
+            content="✅ QSD Blackbox RECOVERY — ${BASE_URL} cat=${CAT} (see artifact in Actions run)"
+          else
+            content="ℹ️ QSD Blackbox Update — ${BASE_URL} cat=${CAT} (see artifact in Actions run)"
+          fi
 
           msg=$(jq -nc \
-            --arg content "🚨 QSD Blackbox FAIL — ${BASE_URL} cat=${CAT} (see artifact in Actions run)" \
+            --arg content "$content" \
             --argjson data "$payload" \
             '{content:$content}')
 

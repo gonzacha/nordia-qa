@@ -121,6 +121,23 @@ Para uso diario, revisar [pocket/POCKET-QA-v2.5.md](./pocket/POCKET-QA-v2.5.md).
 
 ---
 
+## 🧾 QA Ledger (one-time setup)
+
+The QSD observability workflow writes JSONL history to an orphan branch named `qa-ledger`.
+
+```bash
+git checkout --orphan qa-ledger
+git rm -rf .
+mkdir -p data
+touch data/qa_history.jsonl
+git add data/qa_history.jsonl
+git commit -m "chore: init qa ledger"
+git push origin qa-ledger
+git checkout main
+```
+
+---
+
 ## 📋 Las 3 Reglas Sagradas
 
 1. **🚫 Nada se deploya sin pasar los 10 Smoke Tests**

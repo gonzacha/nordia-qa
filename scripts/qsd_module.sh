@@ -36,10 +36,10 @@ errors_json="[]"
 
 build_arrays() {
   if (( ${#warnings[@]} > 0 )); then
-    warnings_json="$(printf '%s\n' "${warnings[@]}" | json_array_from_lines)"
+    warnings_json="$(printf '%s\n' "${warnings[@]}" | json_array_from_lines 2>/dev/null || echo '[]')"
   fi
   if (( ${#errors[@]} > 0 )); then
-    errors_json="$(printf '%s\n' "${errors[@]}" | json_array_from_lines)"
+    errors_json="$(printf '%s\n' "${errors[@]}" | json_array_from_lines 2>/dev/null || echo '[]')"
   fi
 }
 
@@ -246,43 +246,51 @@ end_ms="$(now_ms)"
 execution_ms="$(( end_ms - start_ms ))"
 
 build_arrays
+warnings_json="${warnings_json:-[]}"
+errors_json="${errors_json:-[]}"
 
 # Print single-line JSON
-jq -cn \
-  --arg ts "$ts" \
-  --arg base_url "$base_url" \
-  --arg cat "$cat_name" \
-  --arg status "$status" \
-  --argjson execution_ms "$execution_ms" \
-  --argjson feeds_count "$feeds_count" \
-  --argjson rank_count "$rank_count" \
-  --argjson dupe_url_count "$dupe_url_count" \
-  --argjson english_suspects "$english_suspects" \
-  --argjson echo_detected "$echo_detected" \
-  --argjson echo_flag_missing "$echo_flag_missing" \
-  --argjson missing_fields "$missing_fields" \
-  --arg l1 "$l1" --arg l2 "$l2" --arg l3 "$l3" \
-  --argjson warnings "$warnings_json" \
-  --argjson errors   "$errors_json" \
-  '{
-    ts: $ts,
-    base_url: $base_url,
-    cat: $cat,
-    status: $status,
-    execution_ms: $execution_ms,
-    layers: {L1:$l1, L2:$l2, L3:$l3},
-    metrics: {
-      feeds_count: $feeds_count,
-      rank_count: $rank_count,
-      dupe_url_count: $dupe_url_count,
-      english_suspects: $english_suspects,
-      echo_detected: $echo_detected,
-      echo_flag_missing: $echo_flag_missing,
-      missing_fields: $missing_fields
-    },
-    warnings: $warnings,
-    errors: $errors
-  }'
+final_out="$(
+  jq -cn \
+    --arg ts "$ts" \
+    --arg base_url "$base_url" \
+    --arg cat "$cat_name" \
+    --arg status "$status" \
+    --argjson execution_ms "$execution_ms" \
+    --argjson feeds_count "$feeds_count" \
+    --argjson rank_count "$rank_count" \
+    --argjson dupe_url_count "$dupe_url_count" \
+    --argjson english_suspects "$english_suspects" \
+    --argjson echo_detected "$echo_detected" \
+    --argjson echo_flag_missing "$echo_flag_missing" \
+    --argjson missing_fields "$missing_fields" \
+    --arg l1 "$l1" --arg l2 "$l2" --arg l3 "$l3" \
+    --argjson warnings "$warnings_json" \
+    --argjson errors   "$errors_json" \
+    '{
+      ts: $ts,
+      base_url: $base_url,
+      cat: $cat,
+      status: $status,
+      execution_ms: $execution_ms,
+      layers: {L1:$l1, L2:$l2, L3:$l3},
+      metrics: {
+        feeds_count: $feeds_count,
+        rank_count: $rank_count,
+        dupe_url_count: $dupe_url_count,
+        english_suspects: $english_suspects,
+        echo_detected: $echo_detected,
+        echo_flag_missing: $echo_flag_missing,
+        missing_fields: $missing_fields
+      },
+      warnings: $warnings,
+      errors: $errors
+    }' 2>/dev/null
+)" || final_out="$(
+  printf '{"ts":"%s","base_url":"%s","cat":"%s","status":"FAIL","execution_ms":%s,"layers":{"L1":"FAIL","L2":"FAIL","L3":"FAIL"},"metrics":{"feeds_count":0,"rank_count":0,"dupe_url_count":0,"english_suspects":0,"echo_detected":0,"echo_flag_missing":0,"missing_fields":0},"warnings":[],"errors":["internal_error: jq_output_failed"]}\n' \
+    "$ts" "$base_url" "$cat_name" "$execution_ms"
+)"
+printf '%s\n' "$final_out"
 
 # Exit code: 1 only on FAIL
 if [[ "$status" == "FAIL" ]]; then

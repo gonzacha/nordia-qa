@@ -90,17 +90,20 @@ fi
 # ---- L2: required fields + url scheme
 missing_fields="$(
   jq -n \
-    --argjson feeds "$feeds_body" \
-    --argjson rank  "$rank_body" \
+    --arg feeds "$feeds_body" \
+    --arg rank  "$rank_body" \
     '
+    def F: ($feeds | fromjson);
+    def R: ($rank  | fromjson);
+
     def bad_str(x): (x|type!="string") or (x|length==0);
     def bad_url(u): bad_str(u) or ((u|test("^https?://"))|not);
 
     def feeds_missing:
-      [($feeds.items // [])[] | select(bad_str(.title) or bad_url(.url))] | length;
+      [(F.items // [])[] | select(bad_str(.title) or bad_url(.url // .link))] | length;
 
     def rank_missing:
-      [($rank.items // [])[] | select(bad_str(.title) or bad_url(.url) or (.editorial_score == null))] | length;
+      [(R.items // [])[] | select(bad_str(.title) or bad_url(.url) or (.editorial_score == null))] | length;
 
     (feeds_missing + rank_missing)
     ' 2>/dev/null || echo "0"
@@ -124,7 +127,7 @@ dupe_url_count="$(
       | gsub("\\s+";"")
       | ascii_downcase;
 
-    [(.items // [])[] | norm(.url)] as $u
+    [(.items // [])[] | norm(.url // .link)] as $u
     | ($u | sort | group_by(.) | map(select(length>1) | (length-1)) | add) // 0
   ' 2>/dev/null || echo "0"
 )"
@@ -145,7 +148,7 @@ english_suspects="$(
       ((" " + (t//"") + " ") | ascii_downcase) as $s
       | ([
           " the ", " and ", " is ", " with ", " of "
-        ] | map(select($s | contains(.))) | length) as $m
+        ] | map(. as $tok | select($s | contains($tok))) | length) as $m
       | ($m >= 2);
 
     [(.items // [])[] | select(suspect_title(.title))] | length

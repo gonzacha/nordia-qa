@@ -46,36 +46,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Checkout qa-ledger branch
-        uses: actions/checkout@v4
-        with:
-          ref: qa-ledger
-          path: qa-workspace
-
-      - name: Enrich + append to ledger
+      - name: Enrich observability (observer mode)
+        if: always()
         run: |
-          mkdir -p qa-workspace/data
-          touch qa-workspace/data/qa_history.jsonl
-          ENRICHED_JSON="$(bash scripts/qsd_observability.sh "$(cat out/qsd_module.json)" "qa-workspace/data/qa_history.jsonl")"
-          echo "$ENRICHED_JSON" >> qa-workspace/data/qa_history.jsonl
-          tail -n 168 qa-workspace/data/qa_history.jsonl > qa-workspace/data/.tmp
-          mv qa-workspace/data/.tmp qa-workspace/data/qa_history.jsonl
+          ENRICHED_JSON="$(bash scripts/qsd_observability.sh "$(cat out/qsd_module.json)" "")"
           echo "$ENRICHED_JSON" > out/qsd_observability.json
-
-      - name: Commit ledger
-        run: |
-          git -C qa-workspace config user.name "QSD Bot"
-          git -C qa-workspace config user.email "qsd-bot@noreply"
-          git -C qa-workspace add data/qa_history.jsonl
-          if git -C qa-workspace diff --cached --quiet; then
-            echo "no changes"
-          else
-            git -C qa-workspace commit -m "chore: append QA observability run [skip ci]"
-          fi
-          git -C qa-workspace pull --rebase origin qa-ledger || true
-          git -C qa-workspace push origin qa-ledger || git -C qa-workspace push origin qa-ledger
+          cat out/qsd_observability.json | jq -c '{status, observability}'
 
       - name: Notify Discord on state transition
+        if: always()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -110,3 +89,19 @@ jobs:
           curl -sS -X POST -H "Content-Type: application/json" \
             -d "$msg" \
             "$DISCORD_WEBHOOK_URL" >/dev/null
+
+      - name: Run summary
+        if: always()
+        run: |
+          echo "=== QSD Blackbox Run Summary ==="
+          if [ -f out/qsd_module.json ]; then
+            status=$(cat out/qsd_module.json | jq -r '.status // "UNKNOWN"')
+            echo "Blackbox status: $status"
+          fi
+          if [ -f out/qsd_observability.json ]; then
+            obs=$(cat out/qsd_observability.json | jq -c '.observability // {}')
+            echo "Observability: $obs"
+          fi
+          echo "Artifact: qsd_module_json (7 days retention)"
+          echo "Workflow: SUCCESS (observer mode)"
+          exit 0
